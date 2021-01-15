@@ -99,26 +99,35 @@ void CORE_BlockedMT() {
 		case CMD_NOP:
 			break;
 		case CMD_ADD:
+		{
 			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
 			break;
+		}
 		case CMD_SUB:
+		{
 			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
 			break;
+		}
 		case CMD_ADDI:
+		{
 			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
 				curr_inst.src2_index_imm;
 			break;
+		}
 		case CMD_SUBI:
+		{
 			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
 				curr_inst.src2_index_imm;
 			break;
+		}
 		case CMD_LOAD:
+		{
 			int addr = blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index];
 			if(curr_inst.isSrc2Imm){
 				addr += curr_inst.src2_index_imm;
@@ -132,7 +141,9 @@ void CORE_BlockedMT() {
 			blocked_mt.threads_array[curr_thread].status = WAIT;
 			blocked_mt.threads_array[curr_thread].clocks_to_wait = load_latencey;
 			break;
+		}
 		case CMD_STORE:
+		{
 			int dst = blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
 			if(curr_inst.isSrc2Imm){
 				dst += curr_inst.src2_index_imm;
@@ -144,14 +155,18 @@ void CORE_BlockedMT() {
 			blocked_mt.threads_array[curr_thread].status = WAIT;
 			blocked_mt.threads_array[curr_thread].clocks_to_wait = store_latencey;
 			break;
+		}
 		case CMD_HALT:
+		{
 				blocked_mt.threads_array[curr_thread].status = FINISHED;
 				unfinished_threads--;
 			break;
-
+		}
 		default:
+		{
 			cout<< "DEBUG ERROR - DEFUALT"<<endl;
 			break;
+		}
 		}
 
 
@@ -233,26 +248,35 @@ void CORE_FinegrainedMT() {
 		case CMD_NOP:
 			break;
 		case CMD_ADD:
+		{
 			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
 			break;
+		}
 		case CMD_SUB:
+		{
 			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
 			break;
+		}
 		case CMD_ADDI:
+		{
 			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
 				curr_inst.src2_index_imm;
 			break;
+		}
 		case CMD_SUBI:
+		{
 			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
 				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
 				curr_inst.src2_index_imm;
 			break;
+		}
 		case CMD_LOAD:
+		{
 			int addr = fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index];
 			if(curr_inst.isSrc2Imm){
 				addr += curr_inst.src2_index_imm;
@@ -266,7 +290,9 @@ void CORE_FinegrainedMT() {
 			fine_mt.threads_array[curr_thread].status = WAIT;
 			fine_mt.threads_array[curr_thread].clocks_to_wait = load_latencey;
 			break;
+		}
 		case CMD_STORE:
+		{
 			int dst = fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
 			if(curr_inst.isSrc2Imm){
 				dst += curr_inst.src2_index_imm;
@@ -278,24 +304,31 @@ void CORE_FinegrainedMT() {
 			fine_mt.threads_array[curr_thread].status = WAIT;
 			fine_mt.threads_array[curr_thread].clocks_to_wait = store_latencey;
 			break;
+		}
 		case CMD_HALT:
+		{
 				fine_mt.threads_array[curr_thread].status = FINISHED;
 				unfinished_threads--;
 			break;
-
+		}
 		default:
+		{
 			cout<< "DEBUG ERROR - DEFUALT"<<endl;
 			break;
+		}
 		}
 
 		fine_mt.cycles_counter += cycles_to_reduce;
 		update_threads_fine();
 		curr_thread = next_thread_fine(curr_thread);
 
+	}
 }
 
-void update_threads_fine(){
-	for (int i = 0; i < threads_num; i++) {
+void update_threads_fine()
+{
+	for (int i = 0; i < threads_num; i++) 
+	{
 			if (fine_mt.threads_array[i].status == WAIT) {
 				fine_mt.threads_array[i].clocks_to_wait -= cycles_to_reduce;
 				if (fine_mt.threads_array[i].clocks_to_wait <= 0){
@@ -348,4 +381,5 @@ void CORE_FinegrainedMT_CTX(tcontext* context, int threadid) {
 	for(int i=0; i<REGS_COUNT; i++){
 		context->reg[i] = fine_mt.threads_array[threadid].context.reg[i];
 	return;
+	}
 }
