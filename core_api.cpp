@@ -9,6 +9,10 @@
 
 using namespace std;
 
+//Functions declaration:
+void update_threads();
+int next_thread(int curr_thread);
+
 typedef enum {
 	READY,
 	WAIT,
@@ -20,7 +24,8 @@ int threads_num = SIM_GetThreadsNum();
 int load_latencey = SIM_GetLoadLat();
 int store_latencey = SIM_GetStoreLat();
 int switch_latencey = SIM_GetSwitchCycles();
-
+int cycles_to_reduce = 1;
+bool skip = false;
 
 class thread_data {
 	public:
@@ -71,23 +76,21 @@ MT fine_mt(threads_num);
 
 
 void CORE_BlockedMT() {
-	int next_th_id;//??
 	int unfinished_threads = threads_num;
 	Instruction curr_inst;
 	int curr_thread = 0;
+	
 
 	while(unfinished_threads > 0)
 	{
-		if(blocked_mt.threads_array[curr_thread].status == READY){
+		if(skip){
+			curr_inst.opcode = CMD_NOP; 
+		}
+		else{
 			SIM_MemInstRead(blocked_mt.threads_array[curr_thread].instruction_id, &curr_inst, curr_thread);
 			blocked_mt.threads_array[curr_thread].instruction_id++;
 			blocked_mt.instructions_counter++;
 		}
-		else{
-
-		}
-
-
 
 		switch (curr_inst.opcode)
 		{
@@ -151,31 +154,59 @@ void CORE_BlockedMT() {
 
 
 
+		blocked_mt.cycles_counter += cycles_to_reduce;
+		update_threads();
 
 
-
-
-
-
-
-		for (int i = 0; i < th_num; i++) {
-			if (blocked_mt.threads_array[curr_thread].status == WAIT) {
-				blocked_mt.threads_array[curr_thread].clocks_to_wait-= switch_latencey;
-				if (B_th_data_array[i]._clocks_to_wait <= 0) 
-					queue_data->_queue[i] = READY;
-			}
+		curr_thread = next_thread(curr_thread);
+		//DEBUG
+		if(curr_thread<0){
+			cout << "next_thread error!" << endl;
 		}
-
-
-
-		blocked_mt.cycles_counter++;
-
-
-
-		curr_thread = next_thred();
 	}
 	
 }
+
+void update_threads(){
+	for (int i = 0; i < threads_num; i++) {
+			if (blocked_mt.threads_array[i].status == WAIT) {
+				blocked_mt.threads_array[i].clocks_to_wait -= cycles_to_reduce;
+				if (blocked_mt.threads_array[i].clocks_to_wait <= 0){
+					blocked_mt.threads_array[i].status = READY;
+					blocked_mt.threads_array[i].clocks_to_wait = 0;
+				} 
+			}
+		}
+}
+
+int next_thread(int curr_thread){
+	int next_th_id;
+	if(blocked_mt.threads_array[curr_thread].status == READY){
+		skip = false;
+		cycles_to_reduce = 1;
+		next_th_id = curr_thread;
+		return next_th_id;
+	}
+	else{
+		skip = true;
+		for (int i = curr_thread + 1; 1; i++) {
+			if (i == threads_num)
+				i = 0;
+			if (blocked_mt.threads_array[i].status == READY) {
+				next_th_id = i;
+				cycles_to_reduce = switch_latencey;
+				return next_th_id;
+			}
+			if (i == curr_thread) {
+				next_th_id = curr_thread;
+				cycles_to_reduce = 1;
+				return next_th_id;
+			}
+		}
+	}
+	return -1; //shouldn't reach here!
+}
+
 
 void CORE_FinegrainedMT() {
 }
@@ -193,14 +224,13 @@ double CORE_FinegrainedMT_CPI(){
 void CORE_BlockedMT_CTX(tcontext* context, int threadid) {
 	if(context==NULL) return;
 	for(int i=0; i<REGS_COUNT; i++){
-		context->reg[i] = blocked_mt.th_regs[threadid]->reg[i];
+		context->reg[i] = blocked_mt.threads_array[threadid].context.reg[i];
 	}	return;
 }
 
 void CORE_FinegrainedMT_CTX(tcontext* context, int threadid) {
 	if(context==NULL) return;
 	for(int i=0; i<REGS_COUNT; i++){
-		context->reg[i] = fine_mt.th_regs[threadid]->reg[i];
-	}
+		context->reg[i] = fine_mt.threads_array[threadid].context.reg[i];
 	return;
 }
