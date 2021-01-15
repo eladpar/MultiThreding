@@ -10,10 +10,10 @@
 using namespace std;
 
 //Functions declaration:
-void update_threads_blocked();
-void update_threads_fine();
-int next_thread_blocked(int curr_thread);
-int next_thread_fine(int curr_thread);
+void update_threads_blocked(int threads_num);
+void update_threads_fine(int threads_num);
+int next_thread_blocked(int curr_thread, int threads_num, int switch_latencey);
+int next_thread_fine(int curr_thread, int threads_num);
 
 typedef enum {
 	READY,
@@ -22,10 +22,6 @@ typedef enum {
 } STATUS;
 
 //Globals:
-int threads_num = SIM_GetThreadsNum();
-int load_latencey = SIM_GetLoadLat();
-int store_latencey = SIM_GetStoreLat();
-int switch_latencey = SIM_GetSwitchCycles();
 int cycles_to_reduce = 1;
 bool skip = false;
 
@@ -33,7 +29,6 @@ class thread_data {
 	public:
 		int clocks_to_wait;
 		tcontext context;
-		bool finished;
 		int instruction_id;
 		STATUS status;
 
@@ -43,8 +38,6 @@ class thread_data {
 
 thread_data::thread_data(){
 	clocks_to_wait = 0;
-	finished = false;
-	cerr << "feds" <<endl;
 	for(int i = 0; i<REGS_COUNT; i++){
 		context.reg[i] = 0;  
 	}
@@ -84,19 +77,15 @@ MT fine_mt;
 
 
 void CORE_BlockedMT() {
-	cout << threads_num;
-	int a = SIM_GetThreadsNum();
-	blocked_mt.initlize_vector(a);
-	cerr << "dfsd";
+	int threads_num = SIM_GetThreadsNum();
+	int load_latencey = SIM_GetLoadLat();
+	int store_latencey = SIM_GetStoreLat();
+	int switch_latencey = SIM_GetSwitchCycles();
+
+	blocked_mt.initlize_vector(threads_num);
 	int unfinished_threads = threads_num;
 	Instruction curr_inst;
 	int curr_thread = 0;
-	cerr << "llllll" ;
-	cerr << blocked_mt.threads_array.at(curr_thread).status << endl;
-	cout << "fdfdfdfdffdfdf" ;
-	SIM_MemInstRead(blocked_mt.threads_array.at(curr_thread).instruction_id, &curr_inst, curr_thread);
-	cout << blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] << endl;
-	cerr << "Fdsfs";
 	
 	try{
 
@@ -181,7 +170,7 @@ void CORE_BlockedMT() {
 		}
 		default:
 		{
-			cout<< "DEBUG ERROR - DEFUALT"<<endl;
+			cout<< "DEBUG ERROR - DEFAULT"<<endl;
 			break;
 		}
 		}
@@ -189,10 +178,10 @@ void CORE_BlockedMT() {
 
 
 		blocked_mt.cycles_counter += cycles_to_reduce;
-		update_threads_blocked();
+		update_threads_blocked(threads_num);
 
 
-		curr_thread = next_thread_blocked(curr_thread);
+		curr_thread = next_thread_blocked(curr_thread,threads_num,switch_latencey);
 		//DEBUG
 		if(curr_thread<0){
 			cout << "next_thread error!" << endl;
@@ -206,7 +195,7 @@ void CORE_BlockedMT() {
 	
 }
 
-void update_threads_blocked(){
+void update_threads_blocked(int threads_num){
 	for (int i = 0; i < threads_num; i++) {
 			if (blocked_mt.threads_array[i].status == WAIT) {
 				blocked_mt.threads_array[i].clocks_to_wait -= cycles_to_reduce;
@@ -218,7 +207,7 @@ void update_threads_blocked(){
 		}
 }
 
-int next_thread_blocked(int curr_thread){
+int next_thread_blocked(int curr_thread, int threads_num, int switch_latencey){
 	int next_th_id;
 	if(blocked_mt.threads_array.at(curr_thread).status == READY){
 		skip = false;
@@ -248,6 +237,12 @@ int next_thread_blocked(int curr_thread){
 
 
 void CORE_FinegrainedMT() {
+	int threads_num = SIM_GetThreadsNum();
+	int load_latencey = SIM_GetLoadLat();
+	int store_latencey = SIM_GetStoreLat();
+	
+	fine_mt.initlize_vector(threads_num);
+
 	int unfinished_threads = threads_num;
 	Instruction curr_inst;
 	int curr_thread = 0;
@@ -335,14 +330,14 @@ void CORE_FinegrainedMT() {
 		}
 		default:
 		{
-			cout<< "DEBUG ERROR - DEFUALT"<<endl;
+			cout<< "DEBUG ERROR - DEFAULT"<<endl;
 			break;
 		}
 		}
 
 		fine_mt.cycles_counter += cycles_to_reduce;
-		update_threads_fine();
-		curr_thread = next_thread_fine(curr_thread);
+		update_threads_fine(threads_num);
+		curr_thread = next_thread_fine(curr_thread, threads_num);
 
 	}
 	}
@@ -352,7 +347,7 @@ void CORE_FinegrainedMT() {
 	}
 }
 
-void update_threads_fine()
+void update_threads_fine(int threads_num)
 {
 	for (int i = 0; i < threads_num; i++) 
 	{
@@ -366,7 +361,7 @@ void update_threads_fine()
 	}
 }
 
-int next_thread_fine(int curr_thread){
+int next_thread_fine(int curr_thread,int threads_num){
 	int next_th_id;
 	skip = false;
 
