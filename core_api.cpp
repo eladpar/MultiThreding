@@ -44,6 +44,7 @@ class thread_data {
 thread_data::thread_data(){
 	clocks_to_wait = 0;
 	finished = false;
+	cerr << "feds" <<endl;
 	for(int i = 0; i<REGS_COUNT; i++){
 		context.reg[i] = 0;  
 	}
@@ -59,29 +60,45 @@ public:
 	vector<thread_data> threads_array;
 	int instructions_counter;
 	int cycles_counter;
+	void intilize_vector();
 	MT(int threds_num);
 	~MT(){};
 };
 
 MT::MT(int threds_num)
 {
-	for(int i = 0; i < threads_num; i++){
-		threads_array.push_back(thread_data());
-	}
 	instructions_counter = 0;
 	cycles_counter = 0;
 }
 
-
+void MT::intilize_vector()
+{
+	for(int i = 0; i < threads_num; i++)
+	{
+		thread_data tmp;
+		threads_array.push_back(tmp);
+	}
+}
 MT blocked_mt(threads_num);
 MT fine_mt(threads_num);
 
 
 void CORE_BlockedMT() {
+	thread_data tmp;
+	
+	blocked_mt.intilize_vector();
+	cerr << "dfsd";
 	int unfinished_threads = threads_num;
 	Instruction curr_inst;
 	int curr_thread = 0;
+	cerr << "llllll" ;
+	cerr << blocked_mt.threads_array.at(curr_thread).status << endl;
+	cout << "fdfdfdfdffdfdf" ;
+	SIM_MemInstRead(blocked_mt.threads_array.at(curr_thread).instruction_id, &curr_inst, curr_thread);
+	cout << blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] << endl;
+	cerr << "Fdsfs";
 	
+	try{
 
 	while(unfinished_threads > 0)
 	{
@@ -89,8 +106,8 @@ void CORE_BlockedMT() {
 			curr_inst.opcode = CMD_NOP; 
 		}
 		else{
-			SIM_MemInstRead(blocked_mt.threads_array[curr_thread].instruction_id, &curr_inst, curr_thread);
-			blocked_mt.threads_array[curr_thread].instruction_id++;
+			SIM_MemInstRead(blocked_mt.threads_array.at(curr_thread).instruction_id, &curr_inst, curr_thread);
+			blocked_mt.threads_array.at(curr_thread).instruction_id++;
 			blocked_mt.instructions_counter++;
 		}
 
@@ -100,65 +117,65 @@ void CORE_BlockedMT() {
 			break;
 		case CMD_ADD:
 		{
-			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] +
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			break;
 		}
 		case CMD_SUB:
 		{
-			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] -
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			break;
 		}
 		case CMD_ADDI:
 		{
-			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
+			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] +
 				curr_inst.src2_index_imm;
 			break;
 		}
 		case CMD_SUBI:
 		{
-			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
+			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] -
 				curr_inst.src2_index_imm;
 			break;
 		}
 		case CMD_LOAD:
 		{
-			int addr = blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index];
+			int addr = blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index];
 			if(curr_inst.isSrc2Imm){
 				addr += curr_inst.src2_index_imm;
 			} 
 			else{
-				addr += blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+				addr += blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			}
-			int32_t dst = (int32_t) blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			int32_t dst = (int32_t) blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index];
 			SIM_MemDataRead((uint32_t) addr, &dst);
-			blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = (int) dst;
-			blocked_mt.threads_array[curr_thread].status = WAIT;
-			blocked_mt.threads_array[curr_thread].clocks_to_wait = load_latencey;
+			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = (int) dst;
+			blocked_mt.threads_array.at(curr_thread).status = WAIT;
+			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey;
 			break;
 		}
 		case CMD_STORE:
 		{
-			int dst = blocked_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			int dst = blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index];
 			if(curr_inst.isSrc2Imm){
 				dst += curr_inst.src2_index_imm;
 			} 
 			else{
-				dst += blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+				dst += blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			}
-			SIM_MemDataWrite((uint32_t) dst, (int32_t) blocked_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index]);
-			blocked_mt.threads_array[curr_thread].status = WAIT;
-			blocked_mt.threads_array[curr_thread].clocks_to_wait = store_latencey;
+			SIM_MemDataWrite((uint32_t) dst, (int32_t) blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index]);
+			blocked_mt.threads_array.at(curr_thread).status = WAIT;
+			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey;
 			break;
 		}
 		case CMD_HALT:
 		{
-				blocked_mt.threads_array[curr_thread].status = FINISHED;
+				blocked_mt.threads_array.at(curr_thread).status = FINISHED;
 				unfinished_threads--;
 			break;
 		}
@@ -181,6 +198,11 @@ void CORE_BlockedMT() {
 			cout << "next_thread error!" << endl;
 		}
 	}
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
 	
 }
 
@@ -198,7 +220,7 @@ void update_threads_blocked(){
 
 int next_thread_blocked(int curr_thread){
 	int next_th_id;
-	if(blocked_mt.threads_array[curr_thread].status == READY){
+	if(blocked_mt.threads_array.at(curr_thread).status == READY){
 		skip = false;
 		cycles_to_reduce = 1;
 		next_th_id = curr_thread;
@@ -230,7 +252,7 @@ void CORE_FinegrainedMT() {
 	Instruction curr_inst;
 	int curr_thread = 0;
 	cycles_to_reduce = 1;
-	
+	try{
 
 	while(unfinished_threads > 0)
 	{
@@ -238,8 +260,8 @@ void CORE_FinegrainedMT() {
 			curr_inst.opcode = CMD_NOP; 
 		}
 		else{
-			SIM_MemInstRead(fine_mt.threads_array[curr_thread].instruction_id, &curr_inst, curr_thread);
-			fine_mt.threads_array[curr_thread].instruction_id++;
+			SIM_MemInstRead(fine_mt.threads_array.at(curr_thread).instruction_id, &curr_inst, curr_thread);
+			fine_mt.threads_array.at(curr_thread).instruction_id++;
 			fine_mt.instructions_counter++;
 		}
 
@@ -249,65 +271,65 @@ void CORE_FinegrainedMT() {
 			break;
 		case CMD_ADD:
 		{
-			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] +
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			break;
 		}
 		case CMD_SUB:
 		{
-			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] -
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			break;
 		}
 		case CMD_ADDI:
 		{
-			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
+			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] +
 				curr_inst.src2_index_imm;
 			break;
 		}
 		case CMD_SUBI:
 		{
-			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
-				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
+			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index] -
 				curr_inst.src2_index_imm;
 			break;
 		}
 		case CMD_LOAD:
 		{
-			int addr = fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index];
+			int addr = fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index];
 			if(curr_inst.isSrc2Imm){
 				addr += curr_inst.src2_index_imm;
 			} 
 			else{
-				addr += fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+				addr += fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			}
-			int32_t dst = (int32_t) fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			int32_t dst = (int32_t) fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index];
 			SIM_MemDataRead((uint32_t) addr, &dst);
-			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = (int) dst;
-			fine_mt.threads_array[curr_thread].status = WAIT;
-			fine_mt.threads_array[curr_thread].clocks_to_wait = load_latencey;
+			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = (int) dst;
+			fine_mt.threads_array.at(curr_thread).status = WAIT;
+			fine_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey;
 			break;
 		}
 		case CMD_STORE:
 		{
-			int dst = fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			int dst = fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index];
 			if(curr_inst.isSrc2Imm){
 				dst += curr_inst.src2_index_imm;
 			} 
 			else{
-				dst += fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+				dst += fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src2_index_imm];
 			}
-			SIM_MemDataWrite((uint32_t) dst, (int32_t) fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index]);
-			fine_mt.threads_array[curr_thread].status = WAIT;
-			fine_mt.threads_array[curr_thread].clocks_to_wait = store_latencey;
+			SIM_MemDataWrite((uint32_t) dst, (int32_t) fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index]);
+			fine_mt.threads_array.at(curr_thread).status = WAIT;
+			fine_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey;
 			break;
 		}
 		case CMD_HALT:
 		{
-				fine_mt.threads_array[curr_thread].status = FINISHED;
+				fine_mt.threads_array.at(curr_thread).status = FINISHED;
 				unfinished_threads--;
 			break;
 		}
@@ -322,6 +344,11 @@ void CORE_FinegrainedMT() {
 		update_threads_fine();
 		curr_thread = next_thread_fine(curr_thread);
 
+	}
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
 	}
 }
 
