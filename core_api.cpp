@@ -60,33 +60,33 @@ public:
 	vector<thread_data> threads_array;
 	int instructions_counter;
 	int cycles_counter;
-	void intilize_vector();
-	MT(int threds_num);
+	void initlize_vector(int treds);
+	MT();
 	~MT(){};
 };
 
-MT::MT(int threds_num)
+MT::MT()
 {
 	instructions_counter = 0;
 	cycles_counter = 0;
 }
 
-void MT::intilize_vector()
+void MT::initlize_vector(int treds)
 {
-	for(int i = 0; i < threads_num; i++)
+	for(int i = 0; i < treds; i++)
 	{
 		thread_data tmp;
 		threads_array.push_back(tmp);
 	}
 }
-MT blocked_mt(threads_num);
-MT fine_mt(threads_num);
+MT blocked_mt;
+MT fine_mt;
 
 
 void CORE_BlockedMT() {
-	thread_data tmp;
-	
-	blocked_mt.intilize_vector();
+	cout << threads_num;
+	int a = SIM_GetThreadsNum();
+	blocked_mt.initlize_vector(a);
 	cerr << "dfsd";
 	int unfinished_threads = threads_num;
 	Instruction curr_inst;
