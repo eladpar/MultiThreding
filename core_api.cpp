@@ -10,8 +10,10 @@
 using namespace std;
 
 //Functions declaration:
-void update_threads();
-int next_thread(int curr_thread);
+void update_threads_blocked();
+void update_threads_fine();
+int next_thread_blocked(int curr_thread);
+int next_thread_fine(int curr_thread);
 
 typedef enum {
 	READY,
@@ -155,10 +157,10 @@ void CORE_BlockedMT() {
 
 
 		blocked_mt.cycles_counter += cycles_to_reduce;
-		update_threads();
+		update_threads_blocked();
 
 
-		curr_thread = next_thread(curr_thread);
+		curr_thread = next_thread_blocked(curr_thread);
 		//DEBUG
 		if(curr_thread<0){
 			cout << "next_thread error!" << endl;
@@ -167,7 +169,7 @@ void CORE_BlockedMT() {
 	
 }
 
-void update_threads(){
+void update_threads_blocked(){
 	for (int i = 0; i < threads_num; i++) {
 			if (blocked_mt.threads_array[i].status == WAIT) {
 				blocked_mt.threads_array[i].clocks_to_wait -= cycles_to_reduce;
@@ -179,7 +181,7 @@ void update_threads(){
 		}
 }
 
-int next_thread(int curr_thread){
+int next_thread_blocked(int curr_thread){
 	int next_th_id;
 	if(blocked_mt.threads_array[curr_thread].status == READY){
 		skip = false;
@@ -209,6 +211,119 @@ int next_thread(int curr_thread){
 
 
 void CORE_FinegrainedMT() {
+	int unfinished_threads = threads_num;
+	Instruction curr_inst;
+	int curr_thread = 0;
+	cycles_to_reduce = 1;
+	
+
+	while(unfinished_threads > 0)
+	{
+		if(skip){
+			curr_inst.opcode = CMD_NOP; 
+		}
+		else{
+			SIM_MemInstRead(fine_mt.threads_array[curr_thread].instruction_id, &curr_inst, curr_thread);
+			fine_mt.threads_array[curr_thread].instruction_id++;
+			fine_mt.instructions_counter++;
+		}
+
+		switch (curr_inst.opcode)
+		{
+		case CMD_NOP:
+			break;
+		case CMD_ADD:
+			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			break;
+		case CMD_SUB:
+			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			break;
+		case CMD_ADDI:
+			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] +
+				curr_inst.src2_index_imm;
+			break;
+		case CMD_SUBI:
+			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = 
+				fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index] -
+				curr_inst.src2_index_imm;
+			break;
+		case CMD_LOAD:
+			int addr = fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index];
+			if(curr_inst.isSrc2Imm){
+				addr += curr_inst.src2_index_imm;
+			} 
+			else{
+				addr += fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			}
+			int32_t dst = (int32_t) fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			SIM_MemDataRead((uint32_t) addr, &dst);
+			fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index] = (int) dst;
+			fine_mt.threads_array[curr_thread].status = WAIT;
+			fine_mt.threads_array[curr_thread].clocks_to_wait = load_latencey;
+			break;
+		case CMD_STORE:
+			int dst = fine_mt.threads_array[curr_thread].context.reg[curr_inst.dst_index];
+			if(curr_inst.isSrc2Imm){
+				dst += curr_inst.src2_index_imm;
+			} 
+			else{
+				dst += fine_mt.threads_array[curr_thread].context.reg[curr_inst.src2_index_imm];
+			}
+			SIM_MemDataWrite((uint32_t) dst, (int32_t) fine_mt.threads_array[curr_thread].context.reg[curr_inst.src1_index]);
+			fine_mt.threads_array[curr_thread].status = WAIT;
+			fine_mt.threads_array[curr_thread].clocks_to_wait = store_latencey;
+			break;
+		case CMD_HALT:
+				fine_mt.threads_array[curr_thread].status = FINISHED;
+				unfinished_threads--;
+			break;
+
+		default:
+			cout<< "DEBUG ERROR - DEFUALT"<<endl;
+			break;
+		}
+
+		fine_mt.cycles_counter += cycles_to_reduce;
+		update_threads_fine();
+		curr_thread = next_thread_fine(curr_thread);
+
+}
+
+void update_threads_fine(){
+	for (int i = 0; i < threads_num; i++) {
+			if (fine_mt.threads_array[i].status == WAIT) {
+				fine_mt.threads_array[i].clocks_to_wait -= cycles_to_reduce;
+				if (fine_mt.threads_array[i].clocks_to_wait <= 0){
+					fine_mt.threads_array[i].status = READY;
+					fine_mt.threads_array[i].clocks_to_wait = 0;
+				} 
+			}
+	}
+}
+
+int next_thread_fine(int curr_thread){
+	int next_th_id;
+	skip = false;
+
+	for (int i = curr_thread + 1; 1; i++) {
+		if (i == threads_num)
+			i = 0;
+		if (fine_mt.threads_array[i].status == READY) {
+			next_th_id = i;
+			return next_th_id;
+		}
+		if (i == curr_thread) {
+			next_th_id = curr_thread;
+			skip = true;
+			return next_th_id;
+		}
+	}
+	return -1; //shouldn't reach here!
 }
 
 double CORE_BlockedMT_CPI(){
