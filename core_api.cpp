@@ -51,8 +51,8 @@ class MT
 
 public:
 	vector<thread_data> threads_array;
-	int instructions_counter;
-	int cycles_counter;
+	double instructions_counter;
+	double cycles_counter;
 	void initlize_vector(int treds);
 	MT();
 	~MT(){};
@@ -145,7 +145,7 @@ void CORE_BlockedMT() {
 			SIM_MemDataRead((uint32_t) addr, &dst);
 			blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = (int) dst;
 			blocked_mt.threads_array.at(curr_thread).status = WAIT;
-			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey;
+			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey +1;
 			break;
 		}
 		case CMD_STORE:
@@ -159,7 +159,7 @@ void CORE_BlockedMT() {
 			}
 			SIM_MemDataWrite((uint32_t) dst, (int32_t) blocked_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index]);
 			blocked_mt.threads_array.at(curr_thread).status = WAIT;
-			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey;
+			blocked_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey +1;
 			break;
 		}
 		case CMD_HALT:
@@ -237,6 +237,7 @@ int next_thread_blocked(int curr_thread, int threads_num, int switch_latencey){
 
 
 void CORE_FinegrainedMT() {
+	skip = false;
 	int threads_num = SIM_GetThreadsNum();
 	int load_latencey = SIM_GetLoadLat();
 	int store_latencey = SIM_GetStoreLat();
@@ -305,7 +306,7 @@ void CORE_FinegrainedMT() {
 			SIM_MemDataRead((uint32_t) addr, &dst);
 			fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.dst_index] = (int) dst;
 			fine_mt.threads_array.at(curr_thread).status = WAIT;
-			fine_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey;
+			fine_mt.threads_array.at(curr_thread).clocks_to_wait = load_latencey+1;
 			break;
 		}
 		case CMD_STORE:
@@ -319,7 +320,7 @@ void CORE_FinegrainedMT() {
 			}
 			SIM_MemDataWrite((uint32_t) dst, (int32_t) fine_mt.threads_array.at(curr_thread).context.reg[curr_inst.src1_index]);
 			fine_mt.threads_array.at(curr_thread).status = WAIT;
-			fine_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey;
+			fine_mt.threads_array.at(curr_thread).clocks_to_wait = store_latencey+1;
 			break;
 		}
 		case CMD_HALT:
@@ -345,6 +346,7 @@ void CORE_FinegrainedMT() {
 	{
 		std::cerr << e.what() << '\n';
 	}
+	
 }
 
 void update_threads_fine(int threads_num)
@@ -382,11 +384,13 @@ int next_thread_fine(int curr_thread,int threads_num){
 }
 
 double CORE_BlockedMT_CPI(){
+	//cout << "\nb clocks is " << blocked_mt.cycles_counter << "b inst is " << blocked_mt.instructions_counter << endl;
 	double cpi = blocked_mt.cycles_counter/blocked_mt.instructions_counter;
 	return cpi;
 }
 
 double CORE_FinegrainedMT_CPI(){
+	//cout << "\nf clocks is " << fine_mt.cycles_counter << "f inst is " << fine_mt.instructions_counter << endl;
 	double cpi = fine_mt.cycles_counter/fine_mt.instructions_counter;
 	return cpi;
 }
@@ -394,14 +398,13 @@ double CORE_FinegrainedMT_CPI(){
 void CORE_BlockedMT_CTX(tcontext* context, int threadid) {
 	if(context==NULL) return;
 	for(int i=0; i<REGS_COUNT; i++){
-		context->reg[i] = blocked_mt.threads_array[threadid].context.reg[i];
+		context[threadid].reg[i] = blocked_mt.threads_array[threadid].context.reg[i];
 	}	return;
 }
 
 void CORE_FinegrainedMT_CTX(tcontext* context, int threadid) {
 	if(context==NULL) return;
 	for(int i=0; i<REGS_COUNT; i++){
-		context->reg[i] = fine_mt.threads_array[threadid].context.reg[i];
-	return;
-	}
+		context[threadid].reg[i] = fine_mt.threads_array[threadid].context.reg[i];
+	}  return;
 }

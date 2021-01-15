@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/sim_main",
-            "args": ["${workspaceFolder}/tests/example1.img"],
+            "args": ["${workspaceFolder}/example1.img"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
